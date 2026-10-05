@@ -1,0 +1,107 @@
+(function () {
+  const XHTML_NS = "http://www.w3.org/1999/xhtml";
+  const root = document.querySelector("foreignObject").firstElementChild;
+
+  const originalCreateElement = document.createElement.bind(document);
+  const originalCreateElementNS = document.createElementNS.bind(document);
+
+  Object.defineProperty(document, "head", {
+    get() {
+      return root.querySelector("head");
+    },
+    configurable: true
+  });
+
+  Object.defineProperty(document, "body", {
+    get() {
+      return root.querySelector("body");
+    },
+    configurable: true
+  });
+
+  Object.defineProperty(document, "documentElement", {
+    get() {
+      return root;
+    },
+    configurable: true
+  });
+
+  document.createElement = function (tagName, options) {
+    if (typeof tagName === "string") {
+      return originalCreateElementNS(XHTML_NS, tagName, options);
+    }
+    return originalCreateElement(tagName, options);
+  };
+
+  document.createElementNS = function (namespaceURI, qualifiedName, options) {
+    if (namespaceURI == null || namespaceURI === XHTML_NS) {
+      return originalCreateElementNS(XHTML_NS, qualifiedName, options);
+    }
+    return originalCreateElementNS(namespaceURI, qualifiedName, options);
+  };
+})();
+
+(async () => {
+  document.body.style.cssText =
+    "background:#000;color:#fff;margin:0;height:100vh;display:flex;justify-content:center;align-items:center;font-family:sans-serif;font-size:1.5rem;";
+
+  document.body.textContent = "loading singlefile...";
+
+  const bases = [
+    "https://cdn.jsdelivr.net/gh/TongSherbet/im-single/",
+    "https://quantil.jsdelivr.net/gh/TongSherbet/im-single/",
+    "https://fastly.jsdelivr.net/gh/TongSherbet/im-single/",
+    "https://testingcf.jsdelivr.net/gh/TongSherbet/im-single/",
+    "https://gcore.jsdelivr.net/gh/TongSherbet/im-single/",
+    "https://originfastly.jsdelivr.net/gh/TongSherbet/im-single/",
+    "https://jsdelivr.b-cdn.net/gh/TongSherbet/im-single/",
+    "https://cdn.statically.io/gh/TongSherbet/im-single@main/",
+    "https://rawcdn.githack.com/TongSherbet/im-single/main/",
+    "https://raw.githack.com/TongSherbet/im-single/main/",
+    "https://cdn.staticdelivr.com/gh/TongSherbet/im-single/main/",
+    "https://raw.githubusercontent.com/TongSherbet/im-single/main/",
+    "https://gh.llkk.cc/https://github.com/TongSherbet/im-single/blob/main/",
+    "https://git.yylx.win/github.com/TongSherbet/im-single/blob/main/",
+    "https://fastgit.cc/https://github.com/TongSherbet/im-single/blob/main/",
+    "https://raw.esm.sh/gh/TongSherbet/im-single/",
+    "https://esm.sh/gh/TongSherbet/im-single/"
+  ];
+
+  function validateJs(txt) {
+    if (!txt || txt.length < 200 || txt.trim().startsWith("<")) return false;
+
+    const ob = (txt.match(/[{\[(]/g) || []).length;
+    const cb = (txt.match(/[}\])]/g) || []).length;
+    const hasKeywords =
+      /\b(function|const|let|var|async|await|if|return)\b/.test(txt);
+
+    return hasKeywords && Math.abs(ob - cb) <= 3;
+  }
+
+  const controller = new AbortController();
+
+  const fetchScript = async (base) => {
+    const url = `${base}loader.js?raw&${Math.floor(Date.now() / 3600000)}`;
+    const res = await fetch(url, { signal: controller.signal });
+
+    if (!res.ok) throw 0;
+
+    const txt = await res.text();
+    if (!validateJs(txt)) throw 0;
+
+    return { base, txt };
+  };
+
+  try {
+    const { base, txt } = await Promise.any(bases.map(fetchScript));
+    controller.abort();
+
+    window.RELAY_DOMAIN = base;
+
+    const script = document.createElement("script");
+    script.textContent = txt;
+    document.head.appendChild(script);
+  } catch {
+    // fail silently
+  }
+})();
